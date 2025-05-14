@@ -33,7 +33,7 @@ func (c *Controller) CreateProject(user models.User, name, description string) m
 	// Generate tasks
 	go func() {
 		client := clients.OllamaCLient{
-			Addr: "http://10.8.0.9:11434",
+			Addr: "http://10.8.0.10:11434",
 			Model: "timezen:1",
 		}
 
@@ -53,6 +53,10 @@ func (c *Controller) CreateProject(user models.User, name, description string) m
 	                fmt.Println("Failed to parse line:", lineBuffer)
 	                fmt.Println("Error:", err)
 	            }
+
+				task.Project = project
+				c.DB.Create(&task)
+
 				lineBuffer = ""
 			} else {
 				lineBuffer += resp.Response
@@ -65,3 +69,33 @@ func (c *Controller) CreateProject(user models.User, name, description string) m
 
 	return project
 }
+
+func (c *Controller) GetProject(projectId string) (models.Project, error) {
+	var project models.Project
+	result := c.DB.Model(&models.Project{}).Preload("Users").Where("id = ?", projectId).First(&project)
+	if result.Error != nil {
+		return models.Project{}, result.Error
+	}
+
+	return project, nil
+}
+
+
+func (c *Controller) GetProjectTasks(projectId string) ([]models.Task, error) {	
+	var project models.Project
+	result := c.DB.Model(&models.Project{}).Preload("Users").Where("id = ?", projectId).First(&project)
+	if result.Error != nil {
+		return []models.Task{}, result.Error
+	}
+
+	var tasks []models.Task
+	result = c.DB.Where("project_id = ?", projectId).Find(&tasks)
+	if result.Error != nil {
+		return []models.Task{}, result.Error
+	}
+
+	return tasks, nil
+
+}
+
+
